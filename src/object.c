@@ -191,7 +191,10 @@ void decrRefCount(void *obj) {
         return;
     }
 
-    if (o->refcount <= 0) redisPanic("decrRefCount against refcount <= 0");
+    if (o->refcount <= 0) {
+        redisLog(REDIS_VERBOSE, "Bad type obj '%d'", o->type);
+        redisPanic("decrRefCount against refcount <= 0");
+    }
     /* Object is in memory, or in the process of being swapped out.
      *
      * If the object is being swapped out, abort the operation on

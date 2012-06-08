@@ -1117,6 +1117,13 @@ int processCommand(redisClient *c) {
         return REDIS_OK;
     }
 
+
+    /* resharding proxy command to backends */
+    if (isProxyCommand(c->argv[0]->ptr) == 0) {
+        process_client_command(c);
+    }
+
+
     /* Exec the command */
     if (c->flags & REDIS_MULTI &&
         c->cmd->proc != execCommand && c->cmd->proc != discardCommand &&

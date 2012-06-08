@@ -1,5 +1,6 @@
 #include "redis.h"
 #include "lzf.h"    /* LZF compression library */
+#include "resharding.h"
 
 #include <math.h>
 #include <sys/types.h>
@@ -431,7 +432,7 @@ int rdbSave(char *filename) {
             sds keystr = dictGetEntryKey(de);
             robj key, *o = dictGetEntryVal(de);
             time_t expiretime;
-            
+
             initStaticStringObject(key,keystr);
             expiretime = getExpire(db,&key);
 
@@ -926,6 +927,7 @@ void stopLoading(void) {
     server.loading = 0;
 }
 
+
 int rdbLoad(char *filename) {
     FILE *fp;
     uint32_t dbid;
@@ -999,6 +1001,18 @@ int rdbLoad(char *filename) {
             decrRefCount(val);
             continue;
         }
+
+         /* Call resharding function */
+        process_element(key, val);
+        if (key->refcount > 0) {
+            decrRefCount(key);
+        }
+        if (val->refcount > 0) {
+            decrRefCount(val);
+        }
+        continue;
+        /* End */
+
         /* Add the new object in the hash table */
         dbAdd(db,key,val);
 
@@ -1053,6 +1067,7 @@ eoferr: /* unexpected end of file is handled here with a fatal exit */
     exit(1);
     return REDIS_ERR; /* Just to avoid warning */
 }
+
 
 /* A background saving child (BGSAVE) terminated its work. Handle this. */
 void backgroundSaveDoneHandler(int statloc) {
